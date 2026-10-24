@@ -1,0 +1,26 @@
+[project]
+name = "laboratorio-secop-ii"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "gustavopatinotoro", email = "gustavo.patino@ustabuca.edu.co" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=2.0.0",
+    "numpy>=2.5.4",
+    "polars>=2.0.0",
+    "psutil>=7.2.2",
+    "pyarrow>=26.0.0",
+    "rich>=15.0.0",
+    "torch>=2.14.1",
+    "transformers>=5.20.2",
+]
+
+[project.scripts]
+laboratorio-secop-ii = "laboratorio_secop_ii:main"
+
+[build-system]
+requires = ["uv_build>=0.13.4,<0.14.0"]
+build-backend = "uv_build"
