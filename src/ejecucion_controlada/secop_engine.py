@@ -24,6 +24,9 @@ D_OUT = 512
 R_DEG = 16
 INV_SQRT_D = float(1.0 / np.sqrt(D_OUT))
 
+# Umbral optimizado para conmutación a Régimen 1 (250k nodos ocupan solo ~17.1 MB en RAM)
+REGIME1_MAX_VALID_NODES = 250_000
+
 RABITQ_DTYPE = np.dtype(
     [
         ("bits", np.uint8, (64,)),
@@ -98,14 +101,18 @@ STOP_AND_BOILERPLATE = {
     "hasta",
     "desde",
     "contrato",
+    "contratos",
     "contratar",
     "contratacion",
     "prestacion",
     "servicios",
     "servicio",
     "suministro",
+    "suministrar",
     "adquisicion",
+    "adquirir",
     "compra",
+    "comprar",
     "compraventa",
     "elementos",
     "equipos",
@@ -123,6 +130,11 @@ STOP_AND_BOILERPLATE = {
     "mediante",
     "caracter",
     "temporal",
+    "dotacion",
+    "fortalecimiento",
+    "atencion",
+    "situacion",
+    "emergencia",
 }
 
 
@@ -135,19 +147,32 @@ def strip_accents(text: str) -> str:
     )
 
 
+def _spanish_stem(word: str) -> str:
+    """Recorta sufijos plurales y de género en español (ej. ambulancias -> ambulancia)."""
+    if len(word) > 6 and word.endswith("ciones"):
+        return word[:-6] + "cion"
+    if len(word) > 5 and word.endswith("es") and word[-3] not in "aeiou":
+        return word[:-2]
+    if len(word) > 4 and word.endswith("s"):
+        w = word[:-1]
+        if len(w) > 5 and w[-1] in ("a", "o"):
+            return w[:-1]
+        return w
+    if len(word) > 5 and word[-1] in ("a", "o"):
+        return word[:-1]
+    return word
+
+
 def extract_discriminative_stems(query_text: str) -> list[str]:
-    """Extrae raíces léxicas discriminativas (>= 4 letras) excluyendo jerga genérica de SECOP II."""
+    """Extrae raíces léxicas discriminativas (>= 4 letras) excluyendo jerga genérica y normalizando plurales."""
     norm = strip_accents(query_text)
     tokens = re.findall(r"[a-z0-9]{4,}", norm)
     stems = []
     for t in tokens:
         if t not in STOP_AND_BOILERPLATE:
-            stem = (
-                t[:7]
-                if len(t) >= 8
-                else (t[:-1] if t.endswith("s") and len(t) > 4 else t)
-            )
-            stems.append(stem)
+            stem = _spanish_stem(t)
+            if len(stem) >= 4 and stem not in stems:
+                stems.append(stem)
     return list(dict.fromkeys(stems))
 
 
@@ -399,7 +424,7 @@ class SecopHybridEngine:
             }
 
         visited_count = 0
-        if valid_node_bool is not None and n_valid_nodes <= 20000:
+        if valid_node_bool is not None and n_valid_nodes <= REGIME1_MAX_VALID_NODES:
             valid_nodes = np.flatnonzero(valid_node_bool).astype(np.uint32)
             visited_count = len(valid_nodes)
             regime = f"Régimen 1 (Barrido Directo RaBitQ sobre {visited_count:,} nodos filtrados)"
@@ -600,9 +625,6 @@ if __name__ == "__main__":
     console = Console()
     engine = SecopHybridEngine()
 
-    # -------------------------------------------------------------------------
-    # PRUEBA 2A: RÉGIMEN 2 CON FILTRO SECTORIAL NACIONAL (Inmune a tildes: MÉRITOS)
-    # -------------------------------------------------------------------------
     q_2a = "interventoría técnica administrativa y financiera de obras de infraestructura vial y pavimentación"
     f_2a = SearchFilter(
         modalidad="CONCURSO DE MERITOS",
@@ -634,9 +656,6 @@ if __name__ == "__main__":
         res_2a_warm,
     )
 
-    # -------------------------------------------------------------------------
-    # PRUEBA 2B: RÉGIMEN 2 GLOBAL PURO (Sin Filtros — 3,233,048 Nodos / 5,632,886 Contratos)
-    # -------------------------------------------------------------------------
     q_2b = "adquisición de ambulancias medicalizadas y equipos biomédicos para urgencias hospitalarias"
 
     t0 = time.perf_counter()
