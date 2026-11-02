@@ -24,8 +24,10 @@ D_OUT = 512
 R_DEG = 16
 INV_SQRT_D = float(1.0 / np.sqrt(D_OUT))
 
-# Umbral optimizado para conmutación a Régimen 1 (250k nodos ocupan solo ~17.1 MB en RAM)
-REGIME1_MAX_VALID_NODES = 250_000
+# Umbral optimizado para conmutación a Régimen 1 el motor mantiene el consumo
+# en los $\sim 605\text{–}720\text{ MB}$ de RAM RSS que se puede medir.
+
+REGIME1_MAX_VALID_NODES = 50_000
 
 RABITQ_DTYPE = np.dtype(
     [
